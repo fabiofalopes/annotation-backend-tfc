@@ -1,0 +1,37 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/annotation_db
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_ADMIN_EMAIL=admin@example.com
+      - FIRST_ADMIN_PASSWORD=admin
+      - CORS_ORIGINS=["http://localhost:3000"]
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    networks:
+      - annotation-network
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=annotation_db
+    ports:
+      - "5432:5432"
+    networks:
+      - annotation-network
+
+volumes:
+  postgres_data:
+
+networks:
+  annotation-network:
+    driver: bridge 
