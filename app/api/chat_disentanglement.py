@@ -41,10 +41,16 @@ async def list_messages(
     container_query = (
         select(DataContainer)
         .join(Project)
-        .join(Project.assignments)
         .where(
             DataContainer.id == container_id,
-            (Project.assignments.any(user_id=current_user.id) | (User.is_admin == True))
+            Project.id.in_(
+                select(Project.id)
+                .join(Project.assignments)
+                .where(
+                    (Project.assignments.any(user_id=current_user.id)) |
+                    (User.is_admin == True)
+                )
+            )
         )
     )
     result = await db.execute(container_query)
@@ -119,8 +125,8 @@ async def annotate_thread(
     if existing_annotation:
         # Update existing annotation
         existing_annotation.data = thread_data.model_dump()
+        existing_annotation.updated_at = datetime.now()
         await db.commit()
-        await db.refresh(existing_annotation)
         return existing_annotation
     
     # Create new annotation
@@ -128,7 +134,8 @@ async def annotate_thread(
         item_id=message_id,
         type="thread",
         data=thread_data.model_dump(),
-        created_by=current_user.id
+        created_by=current_user.id,
+        created_at=datetime.now()
     )
     db.add(annotation)
     await db.commit()
@@ -148,10 +155,16 @@ async def get_thread_annotations(
     container_query = (
         select(DataContainer)
         .join(Project)
-        .join(Project.assignments)
         .where(
             DataContainer.id == container_id,
-            (Project.assignments.any(user_id=current_user.id) | (User.is_admin == True))
+            Project.id.in_(
+                select(Project.id)
+                .join(Project.assignments)
+                .where(
+                    (Project.assignments.any(user_id=current_user.id)) |
+                    (User.is_admin == True)
+                )
+            )
         )
     )
     result = await db.execute(container_query)
@@ -171,6 +184,7 @@ async def get_thread_annotations(
             DataItem.container_id == container_id,
             Annotation.type == "thread"
         )
+        .order_by(DataItem.created_at)
     )
     result = await db.execute(query)
     rows = result.all()
